@@ -1,5 +1,6 @@
-cargo new mimi-sound &
-cargo new mimi-ui &
-cargo new mimi-graph &
-cargo new mimi-animation &
-cargo new mimi-script 
+cargo new sound &
+cargo new sound &
+cargo new ui &
+cargo new graph &
+cargo new animation &
+cargo new script 
