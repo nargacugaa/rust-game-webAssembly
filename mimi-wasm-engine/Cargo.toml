@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = [
+    "mimi-animation",
+    "mimi-core",
+    "mimi-graph",
+    "mimi-script",
+    "mimi-sound",
+    "mimi-ui",
+]
