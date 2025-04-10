@@ -1,4 +1,4 @@
-use macroquad::{color::Color, math::Rect};
+use macroquad::{color::Color, math::{Circle, Rect}};
 
 pub struct Shape {
     pub size: f32,
@@ -9,8 +9,20 @@ pub struct Shape {
 }
 
 impl Shape {
-    pub fn collides_with(&self, other: &Self) -> bool {
+    pub fn rect_collides_with(&self, other: &Self) -> bool {
         self.rect().overlaps(&other.rect())
+    }
+
+    pub fn circle_collides_with(&self, other: &Self) -> bool {
+        self.circle().overlaps_rect(&other.rect())
+    }
+
+    fn circle(&self) -> Circle {
+        Circle {
+            x: self.x,
+            y: self.y,
+            r: self.size / 2.0,
+        }
     }
 
     fn rect(&self) -> Rect {
