@@ -6,6 +6,7 @@ pub struct Shape {
     pub x: f32,
     pub y: f32,
     pub color: Color,
+    pub collided: bool,
 }
 
 impl Shape {
