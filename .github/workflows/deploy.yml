@@ -13,26 +13,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           target: wasm32-unknown-unknown
-          override: true
 
       - name: Build
         run: cargo build -p my-first-game --release --target wasm32-unknown-unknown
 
-      - name: Prepare Delpoyment Directory
+      - name: Prepare Deployment Directory
         run: |
-            mkdir -p ./deploy
-            cp ./target/wasm32-unknown-unknown/release/my-first-game.wasm ./deploy/
-            cp ./my-first-game/index.html ./deploy/
+          mkdir -p ./deploy
+          cp ./target/wasm32-unknown-unknown/release/my-first-game.wasm ./deploy/
+          cp ./my-first-game/index.html ./deploy/
+          mkdir -p ./deploy/my-first-game/assets/fonts
+          cp -r ./my-first-game/assets/fonts/* ./deploy/my-first-game/assets/fonts
 
-      - name: Deploy
+      - name: Build and Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
-            github_token: ${{ secrets.GITHUB_TOKEN }}
-            publish_dir: ./deploy
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./deploy
