@@ -46,6 +46,9 @@ async fn main() {
     // font_scale: 缩放倍数
     let text_dimensions = measure_text(text, font.as_ref(), 30, 1.0);
 
+    // 添加时间缩放变量
+    let mut time_scale = 1.0;
+
     loop {
         clear_background(BLANK);
 
@@ -55,8 +58,11 @@ async fn main() {
         let half_window_width = window_screen_width / 2.0;
         let hafl_window_height = window_screen_height / 2.0;
 
+        // 获取当前帧的时间
+        let mut delta_time = get_frame_time();
+        delta_time *= time_scale;
+
         if !gameover {
-            let mut delta_time = get_frame_time();
             // 慢动作调试
             if is_key_down(KeyCode::A) {
                 delta_time *= 0.3;
@@ -143,7 +149,18 @@ async fn main() {
             .iter()
             .any(|square| circle.circle_collides_with(square))
         {
-            gameover = true;
+            if time_scale == 1.0 {
+                time_scale = 0.2;
+            }
+
+            // 逐渐恢复正常速度
+            if time_scale < 1.0 {
+                time_scale += 0.01;
+                if time_scale > 1.0 {
+                    time_scale = 1.0;
+                    gameover = true;
+                }
+            }
         }
         // 判断子弹与方块的碰撞
         for square in squares.iter_mut() {
@@ -158,6 +175,7 @@ async fn main() {
         if gameover && is_key_pressed(KeyCode::Space) {
             squares.clear();
             bullets.clear();
+            time_scale = 1.0;
             circle.x = half_window_width;
             circle.y = hafl_window_height;
             gameover = false;
