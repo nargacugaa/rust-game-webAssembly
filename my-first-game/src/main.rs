@@ -59,7 +59,7 @@ async fn main() {
             let mut delta_time = get_frame_time();
             // 慢动作调试
             if is_key_down(KeyCode::A) {
-                delta_time *= 0.1;
+                delta_time *= 0.3;
             }
 
             let move_frame_speed = MOVEMENT_SPEED * delta_time;
@@ -78,7 +78,7 @@ async fn main() {
             }
 
             // 同屏子弹4
-            if is_key_down(KeyCode::Space) && bullets.len() < 4 {
+            if is_key_pressed(KeyCode::Space) && bullets.len() < 4 {
                 let size = rand::gen_range(10.0, 25.0);
                 let color = color_u8!(
                     rand::gen_range(0, 255),
