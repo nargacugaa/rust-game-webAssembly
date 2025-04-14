@@ -36,13 +36,6 @@ async function __wbg_load(module, imports) {
 function __wbg_get_imports() {
     const imports = {};
     imports.wbg = {};
-    imports.wbg.__wbg_loadHighScore_7bd988f2f20555c7 = function() {
-        const ret = window.loadHighScore();
-        return ret;
-    };
-    imports.wbg.__wbg_saveHighScore_a337aca6c10903b0 = function(arg0) {
-        window.saveHighScore(arg0 >>> 0);
-    };
     imports.wbg.__wbindgen_init_externref_table = function() {
         const table = wasm.__wbindgen_export_0;
         const offset = table.grow(4);
