@@ -281,6 +281,20 @@ async fn main() {
                     ..Default::default()
                 },
             );
+            if score == high_score {
+                let congratulation_text = "Congratulations!";
+                draw_text_ex(
+                    congratulation_text,
+                    half_window_width - text_dimensions.width / 3.0,
+                    hafl_window_height + text_dimensions.height + 10.0,
+                    TextParams {
+                        font: font.as_ref(),
+                        font_size: 30,
+                        color: PINK,
+                        ..Default::default()
+                    },
+                );
+            }
         }
 
         next_frame().await;
