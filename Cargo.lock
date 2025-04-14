@@ -993,6 +993,7 @@ name = "my-first-game"
 version = "0.1.0"
 dependencies = [
  "macroquad",
+ "wasm-bindgen",
 ]
 
 [[package]]

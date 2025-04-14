@@ -25,9 +25,11 @@ jobs:
 
       - name: Prepare Deployment Directory
         run: |
-          mkdir -p ./deploy
-          cp ./target/wasm32-unknown-unknown/release/my-first-game.wasm ./deploy/
-          cp ./my-first-game/index.html ./deploy/
+          mkdir -p ./deploy/my-first-game
+          cp ./target/wasm32-unknown-unknown/release/my-first-game.wasm ./deploy/my-first-game
+          cp ./my-first-game/index.html ./deploy/my-first-game
+          mkdir -p ./deploy/my-first-game/web
+          cp ./my-first-game/web/* ./deploy/my-first-game/web
           mkdir -p ./deploy/my-first-game/assets/
           cp -r ./my-first-game/assets/* ./deploy/my-first-game/assets/
 

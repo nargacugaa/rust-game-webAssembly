@@ -2,6 +2,8 @@ pub mod shape;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 use macroquad::prelude::*;
 
@@ -293,7 +295,13 @@ async fn main() {
 fn load_high_score() -> u32 {
     #[cfg(target_arch = "wasm32")]
     {
-        0
+        #[wasm_bindgen]
+        extern "C" {
+            #[wasm_bindgen(js_namespace = window)]
+            fn loadHighScore() -> u32;
+        }
+
+        loadHighScore()
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -307,6 +315,13 @@ fn load_high_score() -> u32 {
 fn save_high_score(score: u32) {
     #[cfg(target_arch = "wasm32")]
     {
+        #[wasm_bindgen]
+        extern "C" {
+            #[wasm_bindgen(js_namespace = window)]
+            fn saveHighScore(score: u32);
+        }
+
+        saveHighScore(score);
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
