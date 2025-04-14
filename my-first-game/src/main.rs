@@ -3,8 +3,12 @@ pub mod shape;
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
+use {
+    gloo_storage::{LocalStorage, Storage},
+    wasm_bindgen::prelude::*,
+};
 
+use gloo_storage::LocalStorage;
 use macroquad::prelude::*;
 
 use shape::Shape;
@@ -295,14 +299,7 @@ async fn main() {
 fn load_high_score() -> u32 {
     #[cfg(target_arch = "wasm32")]
     {
-        // wasm32平台实现
-        web_sys::window()
-            .and_then(|win| win.local_storage().ok())
-            .flatten()
-            .and_then(|storage| storage.get_item("highscore").ok())
-            .flatten()
-            .and_then(|score_str| score_str.parse::<u32>().ok())
-            .unwrap_or(0)
+        LocalStorage::get("highscore").unwrap_or(0)
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -316,19 +313,10 @@ fn load_high_score() -> u32 {
 fn save_high_score(score: u32) {
     #[cfg(target_arch = "wasm32")]
     {
-        // wasm32平台实现
-        web_sys::window()
-            .and_then(|win| win.local_storage().ok())
-            .flatten()
-            .and_then(|storage| storage.set_item("highscore", &score.to_string()).ok())
-            .unwrap_or(());
+        LocalStorage::set("highscore", score).ok();
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        fs::write(
-            "my-first-game/assets/data/highscore.dat",
-            score.to_string(),
-        )
-        .ok();
+        fs::write("my-first-game/assets/data/highscore.dat", score.to_string()).ok();
     }
 }
