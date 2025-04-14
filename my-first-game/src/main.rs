@@ -1,5 +1,6 @@
 pub mod shape;
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::fs;
 
 use macroquad::prelude::*;
