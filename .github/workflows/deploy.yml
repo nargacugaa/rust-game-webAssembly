@@ -20,15 +20,20 @@ jobs:
         with:
           target: wasm32-unknown-unknown
 
+      - name: Install wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli
+
       - name: Build
         run: cargo build -p my-first-game --release --target wasm32-unknown-unknown
 
+      - name: Generate WebAssembly Bindings
+        run: |
+          wasm-bindgen --target web --no-typescript --out-dir ./deploy ./target/wasm32-unknown-unknown/release/my-first-game.wasm
+
       - name: Prepare Deployment Directory
         run: |
-          mkdir -p ./deploy
           cp ./my-first-game/index.html ./deploy/
-          cp ./my-first-game/web/* ./deploy/
-          cp ./target/wasm32-unknown-unknown/release/my-first-game.wasm ./deploy/
+          cp -r ./my-first-game/web/* ./deploy/ || true
           mkdir -p ./deploy/my-first-game/assets/
           cp -r ./my-first-game/assets/* ./deploy/my-first-game/assets/
 
