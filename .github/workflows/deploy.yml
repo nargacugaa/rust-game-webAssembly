@@ -28,8 +28,8 @@ jobs:
           mkdir -p ./deploy
           cp ./target/wasm32-unknown-unknown/release/my-first-game.wasm ./deploy/
           cp ./my-first-game/index.html ./deploy/
-          mkdir -p ./deploy/my-first-game/assets/fonts
-          cp -r ./my-first-game/assets/fonts/* ./deploy/my-first-game/assets/fonts
+          mkdir -p ./deploy/my-first-game/assets/
+          cp -r ./my-first-game/assets/* ./deploy/my-first-game/assets/
 
       - name: Build and Deploy
         uses: peaceiris/actions-gh-pages@v3

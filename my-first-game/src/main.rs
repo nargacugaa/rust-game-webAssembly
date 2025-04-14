@@ -1,6 +1,9 @@
 pub mod shape;
 
+use std::fs;
+
 use macroquad::prelude::*;
+
 use shape::Shape;
 
 /// 移动速度常量
@@ -22,7 +25,6 @@ async fn main() {
         rand::gen_range(0, 255),
         rand::gen_range(0, 255)
     );
-
     let mut circle = Shape {
         size: 32.0,
         speed: MOVEMENT_SPEED,
@@ -34,21 +36,24 @@ async fn main() {
     let big_r = circle.size / 2.0;
     let small_r = circle.size / 4.0;
 
-    // 控制本轮游戏是否结束
-    let mut gameover = false;
-    // 判断碰撞是否发生
-    let mut collides = false;
-
     // 加载字体
     let font = match load_ttf_font("my-first-game/assets/fonts/NotoSansSC-Regular.ttf").await {
         Ok(font) => Some(font),
         Err(_) => None,
     };
-
     let text = "Game Over! Press Space to Restart";
     // font_scale: 缩放倍数
     let text_dimensions = measure_text(text, font.as_ref(), 30, 1.0);
 
+    // 当前分数
+    let mut score: u32 = 0;
+    // 历史最高分
+    let mut high_score: u32 = load_height_score();
+
+    // 控制本轮游戏是否结束
+    let mut gameover = false;
+    // 判断碰撞是否发生
+    let mut collides = false;
     // 添加时间缩放变量
     let mut time_scale = 1.0;
 
@@ -171,6 +176,11 @@ async fn main() {
                 time_scale += 0.01;
                 if time_scale > 1.0 {
                     time_scale = 1.0;
+                    // 保存最高分
+                    if score == high_score {
+                        save_height_score(score);
+                    }
+
                     gameover = true;
                 }
             }
@@ -181,10 +191,14 @@ async fn main() {
                 if bullet.circle_collides_with(square) {
                     square.collided = true;
                     bullet.collided = true;
+
+                    score += square.size.round() as u32;
+                    high_score = high_score.max(score);
                 }
             }
         }
 
+        // 游戏结束重开
         if gameover && is_key_pressed(KeyCode::Space) {
             squares.clear();
             bullets.clear();
@@ -193,15 +207,18 @@ async fn main() {
             gameover = false;
             collides = false;
             time_scale = 1.0;
+            score = 0;
         }
 
         // 渲染子弹
         for bullet in &bullets {
+            // region: 这会放bullet每帧在圆圈和实心圆之间跳动
             // if rand::gen_range(0, 99) > 50 {
             //     draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
             // } else {
             //     draw_circle(bullet.x, bullet.y, bullet.size / 2.0, bullet.color);
             // }
+            // endregion
             draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
         }
 
@@ -220,6 +237,37 @@ async fn main() {
             );
         }
 
+        // region: 渲染分数和历史最高分数
+        // 渲染分数
+        draw_text_ex(
+            format!("当前分数: {}", score).as_str(),
+            10.0,
+            35.0,
+            TextParams {
+                font: font.as_ref(),
+                font_size: 25,
+                color: WHITE,
+                ..Default::default()
+            },
+        );
+
+        // 渲染历史最高分数
+        let highscore_text = format!("历史最高分: {}", high_score);
+        let highscore_text_dimensions =
+            measure_text(highscore_text.as_str(), font.as_ref(), 25, 1.0);
+        draw_text_ex(
+            highscore_text.as_str(),
+            screen_width() - highscore_text_dimensions.width - 10.0,
+            35.0,
+            TextParams {
+                font: font.as_ref(),
+                font_size: 25,
+                color: YELLOW,
+                ..Default::default()
+            },
+        );
+        // endregion
+
         if gameover {
             draw_text_ex(
                 text,
@@ -235,5 +283,49 @@ async fn main() {
         }
 
         next_frame().await;
+    }
+}
+
+/// 读取高度分数
+///
+/// 根据当前不同的平台有不同的实现
+fn load_height_score() -> u32 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        // wasm32平台实现
+        web_sys::window()
+            .and_then(|win| win.local_storage().ok())
+            .flatten()
+            .and_then(|storage| storage.get_item("heightscore").ok())
+            .flatten()
+            .and_then(|score_str| score_str.parse::<u32>().ok())
+            .unwrap_or(0)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        fs::read_to_string("my-first-game/assets/data/heightscore.dat")
+            .map_or(Ok(0), |s| s.parse::<u32>())
+            .unwrap_or(0)
+    }
+}
+
+/// 保存最高的分数
+fn save_height_score(score: u32) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        // wasm32平台实现
+        web_sys::window()
+            .and_then(|win| win.local_storage().ok())
+            .flatten()
+            .and_then(|storage| storage.set_item("heightscore", &score.to_string()).ok())
+            .unwrap_or(());
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        fs::write(
+            "my-first-game/assets/data/heightscore.dat",
+            score.to_string(),
+        )
+        .ok();
     }
 }
