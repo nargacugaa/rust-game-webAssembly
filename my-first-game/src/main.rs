@@ -49,7 +49,7 @@ async fn main() {
     // 当前分数
     let mut score: u32 = 0;
     // 历史最高分
-    let mut high_score: u32 = load_height_score();
+    let mut high_score: u32 = load_high_score();
 
     // 控制本轮游戏是否结束
     let mut gameover = false;
@@ -179,7 +179,7 @@ async fn main() {
                     time_scale = 1.0;
                     // 保存最高分
                     if score == high_score {
-                        save_height_score(score);
+                        save_high_score(score);
                     }
 
                     gameover = true;
@@ -290,41 +290,41 @@ async fn main() {
 /// 读取高度分数
 ///
 /// 根据当前不同的平台有不同的实现
-fn load_height_score() -> u32 {
+fn load_high_score() -> u32 {
     #[cfg(target_arch = "wasm32")]
     {
         // wasm32平台实现
         web_sys::window()
             .and_then(|win| win.local_storage().ok())
             .flatten()
-            .and_then(|storage| storage.get_item("heightscore").ok())
+            .and_then(|storage| storage.get_item("highscore").ok())
             .flatten()
             .and_then(|score_str| score_str.parse::<u32>().ok())
             .unwrap_or(0)
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        fs::read_to_string("my-first-game/assets/data/heightscore.dat")
+        fs::read_to_string("my-first-game/assets/data/highscore.dat")
             .map_or(Ok(0), |s| s.parse::<u32>())
             .unwrap_or(0)
     }
 }
 
 /// 保存最高的分数
-fn save_height_score(score: u32) {
+fn save_high_score(score: u32) {
     #[cfg(target_arch = "wasm32")]
     {
         // wasm32平台实现
         web_sys::window()
             .and_then(|win| win.local_storage().ok())
             .flatten()
-            .and_then(|storage| storage.set_item("heightscore", &score.to_string()).ok())
+            .and_then(|storage| storage.set_item("highscore", &score.to_string()).ok())
             .unwrap_or(());
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
         fs::write(
-            "my-first-game/assets/data/heightscore.dat",
+            "my-first-game/assets/data/highscore.dat",
             score.to_string(),
         )
         .ok();
