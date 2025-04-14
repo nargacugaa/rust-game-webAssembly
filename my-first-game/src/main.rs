@@ -1,14 +1,10 @@
 pub mod shape;
 
+#[cfg(target_arch = "wasm32")]
+use gloo_storage::{LocalStorage, Storage};
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
-#[cfg(target_arch = "wasm32")]
-use {
-    gloo_storage::{LocalStorage, Storage},
-    wasm_bindgen::prelude::*,
-};
 
-use gloo_storage::LocalStorage;
 use macroquad::prelude::*;
 
 use shape::Shape;
