@@ -34,7 +34,10 @@ async fn main() {
     let big_r = circle.size / 2.0;
     let small_r = circle.size / 4.0;
 
+    // 控制本轮游戏是否结束
     let mut gameover = false;
+    // 判断碰撞是否发生
+    let mut collides = false;
 
     // 加载字体
     let font = match load_ttf_font("my-first-game/assets/fonts/NotoSansSC-Regular.ttf").await {
@@ -62,51 +65,15 @@ async fn main() {
         let mut delta_time = get_frame_time();
         delta_time *= time_scale;
 
-        if !gameover {
-            // 慢动作调试
-            if is_key_down(KeyCode::A) {
-                delta_time *= 0.3;
-            }
+        // 慢动作调试
+        if is_key_down(KeyCode::A) {
+            delta_time *= 0.3;
+        }
 
+        if !gameover {
             let move_frame_speed = MOVEMENT_SPEED * delta_time;
 
-            if is_key_down(KeyCode::Right) {
-                circle.x += move_frame_speed;
-            }
-            if is_key_down(KeyCode::Left) {
-                circle.x -= move_frame_speed;
-            }
-            if is_key_down(KeyCode::Up) {
-                circle.y -= move_frame_speed;
-            }
-            if is_key_down(KeyCode::Down) {
-                circle.y += move_frame_speed;
-            }
-
-            // 同屏子弹4
-            if is_key_pressed(KeyCode::Space) && bullets.len() < 4 {
-                let size = rand::gen_range(10.0, 25.0);
-                let color = color_u8!(
-                    rand::gen_range(0, 255),
-                    rand::gen_range(0, 255),
-                    rand::gen_range(0, 255),
-                    rand::gen_range(0, 255)
-                );
-
-                bullets.push(Shape {
-                    size,
-                    x: circle.x,
-                    y: circle.y,
-                    speed: circle.speed * 2.5,
-                    color,
-                    collided: false,
-                });
-            }
-
-            // 限制移动范围在屏幕内
-            circle.x = clamp(circle.x, 0f32, window_screen_width);
-            circle.y = clamp(circle.y, 0f32, window_screen_height);
-
+            // 生成方块的逻辑
             if rand::gen_range(0, 99) >= 95 {
                 let size = rand::gen_range(16.0, 64.0);
                 squares.push(Shape {
@@ -125,7 +92,7 @@ async fn main() {
             }
 
             // 方块移动
-            for square in &mut squares {
+            for square in squares.iter_mut().filter(|square| !square.collided) {
                 square.y += square.speed * delta_time;
             }
             // 子弹射击
@@ -138,19 +105,65 @@ async fn main() {
             // 移除超出屏幕的子弹
             bullets.retain(|bullet| bullet.y > 0.0 - bullet.size / 2.0);
 
-            // 移除被子弹击中的方块
-            squares.retain(|square| !square.collided);
             // 移除击中方块的子弹
             bullets.retain(|bullet| !bullet.collided);
+
+            if !collides {
+                if is_key_down(KeyCode::Right) {
+                    circle.x += move_frame_speed;
+                }
+                if is_key_down(KeyCode::Left) {
+                    circle.x -= move_frame_speed;
+                }
+                if is_key_down(KeyCode::Up) {
+                    circle.y -= move_frame_speed;
+                }
+                if is_key_down(KeyCode::Down) {
+                    circle.y += move_frame_speed;
+                }
+                // 同屏子弹4
+                if is_key_pressed(KeyCode::Space) && bullets.len() < 4 {
+                    let size = rand::gen_range(10.0, 25.0);
+                    let color = color_u8!(
+                        rand::gen_range(0, 255),
+                        rand::gen_range(0, 255),
+                        rand::gen_range(0, 255),
+                        rand::gen_range(0, 255)
+                    );
+
+                    bullets.push(Shape {
+                        size,
+                        x: circle.x,
+                        y: circle.y,
+                        speed: circle.speed * 2.5,
+                        color,
+                        collided: false,
+                    });
+                }
+
+                // 限制移动范围在屏幕内
+                circle.x = clamp(circle.x, 0f32, window_screen_width);
+                circle.y = clamp(circle.y, 0f32, window_screen_height);
+
+                // 移除被子弹击中的方块
+                squares.retain(|square| !square.collided);
+            }
         }
 
         // 判断circle与方块的碰撞
         if squares
-            .iter()
-            .any(|square| circle.circle_collides_with(square))
+            .iter_mut()
+            .any(|square| match circle.circle_collides_with(square) {
+                true => {
+                    collides = true;
+                    square.collided = true;
+                    true
+                }
+                false => false,
+            })
         {
             if time_scale == 1.0 {
-                time_scale = 0.2;
+                time_scale = 0.3;
             }
 
             // 逐渐恢复正常速度
@@ -175,10 +188,11 @@ async fn main() {
         if gameover && is_key_pressed(KeyCode::Space) {
             squares.clear();
             bullets.clear();
-            time_scale = 1.0;
             circle.x = half_window_width;
             circle.y = hafl_window_height;
             gameover = false;
+            collides = false;
+            time_scale = 1.0;
         }
 
         // 渲染子弹
