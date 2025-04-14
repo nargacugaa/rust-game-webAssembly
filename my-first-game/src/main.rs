@@ -1,4 +1,5 @@
 pub mod shape;
+mod state;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
@@ -6,6 +7,7 @@ use std::fs;
 use macroquad::prelude::*;
 
 use shape::Shape;
+use state::GameState;
 
 /// 移动速度常量
 const MOVEMENT_SPEED: f32 = 400.0;
@@ -42,17 +44,14 @@ async fn main() {
         Ok(font) => Some(font),
         Err(_) => None,
     };
-    let text = "Game Over! Press Space to Restart";
-    // font_scale: 缩放倍数
-    let text_dimensions = measure_text(text, font.as_ref(), 30, 1.0);
 
     // 当前分数
     let mut score: u32 = 0;
     // 历史最高分
     let mut high_score: u32 = load_high_score();
 
-    // 控制本轮游戏是否结束
-    let mut gameover = false;
+    // 设置游戏状态
+    let mut game_state = GameState::MainMenu;
     // 判断碰撞是否发生
     let mut collides = false;
     // 添加时间缩放变量
@@ -76,217 +75,191 @@ async fn main() {
             delta_time *= 0.3;
         }
 
-        if !gameover {
-            let move_frame_speed = MOVEMENT_SPEED * delta_time;
+        match game_state {
+            GameState::MainMenu => {
+                if is_key_pressed(KeyCode::Escape) {
+                    std::process::exit(0);
+                }
+                if is_key_pressed(KeyCode::Space) {
+                    game_state = GameState::Playing;
+                    squares.clear();
+                    bullets.clear();
+                    circle.x = half_window_width;
+                    circle.y = hafl_window_height;
+                    collides = false;
+                    time_scale = 1.0;
+                    score = 0;
+                }
 
-            // 生成方块的逻辑
-            if rand::gen_range(0, 99) >= 95 {
-                let size = rand::gen_range(16.0, 64.0);
-                squares.push(Shape {
-                    size,
-                    speed: rand::gen_range(16.0, 64.0),
-                    x: rand::gen_range(size / 2.0, screen_width() - size / 2.0),
-                    y: -size,
-                    color: color_u8!(
-                        rand::gen_range(0, 255),
-                        rand::gen_range(0, 255),
-                        rand::gen_range(0, 255),
-                        rand::gen_range(0, 255)
-                    ),
-                    collided: false,
-                });
+                let text = "PRESS SPACE TO START!";
+                let text_dimensions = measure_text(text, font.as_ref(), 30, 1.0);
+                draw_text_ex(
+                    text,
+                    half_window_width - text_dimensions.width / 2.0,
+                    hafl_window_height,
+                    TextParams {
+                        font: font.as_ref(),
+                        font_size: 30,
+                        color: RED,
+                        ..Default::default()
+                    },
+                );
             }
-
-            // 方块移动
-            for square in squares.iter_mut().filter(|square| !square.collided) {
-                square.y += square.speed * delta_time;
-            }
-            // 子弹射击
-            for bullet in &mut bullets {
-                bullet.y -= bullet.speed * delta_time;
-            }
-
-            // 移除超出屏幕的方块
-            squares.retain(|square| square.y < window_screen_height + square.size);
-            // 移除超出屏幕的子弹
-            bullets.retain(|bullet| bullet.y > 0.0 - bullet.size / 2.0);
-
-            // 移除击中方块的子弹
-            bullets.retain(|bullet| !bullet.collided);
-
-            if !collides {
-                if is_key_down(KeyCode::Right) {
-                    circle.x += move_frame_speed;
+            GameState::Playing => {
+                // Pause
+                if is_key_down(KeyCode::Escape) {
+                    game_state = GameState::Paused;
                 }
-                if is_key_down(KeyCode::Left) {
-                    circle.x -= move_frame_speed;
-                }
-                if is_key_down(KeyCode::Up) {
-                    circle.y -= move_frame_speed;
-                }
-                if is_key_down(KeyCode::Down) {
-                    circle.y += move_frame_speed;
-                }
-                // 同屏子弹4
-                if is_key_pressed(KeyCode::Space) && bullets.len() < 4 {
-                    let size = rand::gen_range(10.0, 25.0);
-                    let color = color_u8!(
-                        rand::gen_range(0, 255),
-                        rand::gen_range(0, 255),
-                        rand::gen_range(0, 255),
-                        rand::gen_range(0, 255)
-                    );
 
-                    bullets.push(Shape {
+                let move_frame_speed = MOVEMENT_SPEED * delta_time;
+
+                // 生成方块的逻辑
+                if rand::gen_range(0, 99) >= 95 {
+                    let size = rand::gen_range(16.0, 64.0);
+                    squares.push(Shape {
                         size,
-                        x: circle.x,
-                        y: circle.y,
-                        speed: circle.speed * 2.5,
-                        color,
+                        speed: rand::gen_range(16.0, 64.0),
+                        x: rand::gen_range(size / 2.0, screen_width() - size / 2.0),
+                        y: -size,
+                        color: color_u8!(
+                            rand::gen_range(0, 255),
+                            rand::gen_range(0, 255),
+                            rand::gen_range(0, 255),
+                            rand::gen_range(0, 255)
+                        ),
                         collided: false,
                     });
                 }
 
-                // 限制移动范围在屏幕内
-                circle.x = clamp(circle.x, 0f32, window_screen_width);
-                circle.y = clamp(circle.y, 0f32, window_screen_height);
-
-                // 移除被子弹击中的方块
-                squares.retain(|square| !square.collided);
-            }
-        }
-
-        // 判断circle与方块的碰撞
-        if squares
-            .iter_mut()
-            .any(|square| match circle.circle_collides_with(square) {
-                true => {
-                    collides = true;
-                    square.collided = true;
-                    true
+                // 方块移动
+                for square in squares.iter_mut().filter(|square| !square.collided) {
+                    square.y += square.speed * delta_time;
                 }
-                false => false,
-            })
-        {
-            if time_scale == 1.0 {
-                time_scale = 0.3;
-            }
+                // 子弹射击
+                for bullet in &mut bullets {
+                    bullet.y -= bullet.speed * delta_time;
+                }
 
-            // 逐渐恢复正常速度
-            if time_scale < 1.0 {
-                time_scale += 0.01;
-                if time_scale > 1.0 {
-                    time_scale = 1.0;
-                    // 保存最高分
-                    if score == high_score {
-                        save_high_score(score);
+                // 移除超出屏幕的方块
+                squares.retain(|square| square.y < window_screen_height + square.size);
+                // 移除超出屏幕的子弹
+                bullets.retain(|bullet| bullet.y > 0.0 - bullet.size / 2.0);
+
+                // 移除击中方块的子弹
+                bullets.retain(|bullet| !bullet.collided);
+
+                if !collides {
+                    if is_key_down(KeyCode::Right) {
+                        circle.x += move_frame_speed;
+                    }
+                    if is_key_down(KeyCode::Left) {
+                        circle.x -= move_frame_speed;
+                    }
+                    if is_key_down(KeyCode::Up) {
+                        circle.y -= move_frame_speed;
+                    }
+                    if is_key_down(KeyCode::Down) {
+                        circle.y += move_frame_speed;
+                    }
+                    // 同屏子弹4
+                    if is_key_pressed(KeyCode::Space) && bullets.len() < 4 {
+                        let size = rand::gen_range(10.0, 25.0);
+                        let color = color_u8!(
+                            rand::gen_range(0, 255),
+                            rand::gen_range(0, 255),
+                            rand::gen_range(0, 255),
+                            rand::gen_range(0, 255)
+                        );
+
+                        bullets.push(Shape {
+                            size,
+                            x: circle.x,
+                            y: circle.y,
+                            speed: circle.speed * 2.5,
+                            color,
+                            collided: false,
+                        });
                     }
 
-                    gameover = true;
+                    // 限制移动范围在屏幕内
+                    circle.x = clamp(circle.x, 0f32, window_screen_width);
+                    circle.y = clamp(circle.y, 0f32, window_screen_height);
+
+                    // 移除被子弹击中的方块
+                    squares.retain(|square| !square.collided);
                 }
-            }
-        }
-        // 判断子弹与方块的碰撞
-        for square in squares.iter_mut() {
-            for bullet in bullets.iter_mut() {
-                if bullet.circle_collides_with(square) {
-                    square.collided = true;
-                    bullet.collided = true;
 
-                    score += square.size.round() as u32;
-                    high_score = high_score.max(score);
+                // 判断circle与方块的碰撞
+                if squares
+                    .iter_mut()
+                    .any(|square| match circle.circle_collides_with(square) {
+                        true => {
+                            collides = true;
+                            square.collided = true;
+                            true
+                        }
+                        false => false,
+                    })
+                {
+                    if time_scale == 1.0 {
+                        time_scale = 0.3;
+                    }
+
+                    // 逐渐恢复正常速度
+                    if time_scale < 1.0 {
+                        time_scale += 0.01;
+                        if time_scale > 1.0 {
+                            time_scale = 1.0;
+                            // 保存最高分
+                            if score == high_score {
+                                save_high_score(score);
+                            }
+
+                            game_state = GameState::GameOver;
+                        }
+                    }
                 }
+                // 判断子弹与方块的碰撞
+                for square in squares.iter_mut() {
+                    for bullet in bullets.iter_mut() {
+                        if bullet.circle_collides_with(square) {
+                            square.collided = true;
+                            bullet.collided = true;
+
+                            score += square.size.round() as u32;
+                            high_score = high_score.max(score);
+                        }
+                    }
+                }
+
+                // 渲染子弹
+                for bullet in &bullets {
+                    // region: 这会放bullet每帧在圆圈和实心圆之间跳动
+                    // if rand::gen_range(0, 99) > 50 {
+                    //     draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
+                    // } else {
+                    //     draw_circle(bullet.x, bullet.y, bullet.size / 2.0, bullet.color);
+                    // }
+                    // endregion
+                    draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
+                }
+
+                // 渲染circle
+                draw_circle(circle.x, circle.y, small_r, DARKBLUE);
+                draw_circle(circle.x, circle.y, big_r, color);
             }
-        }
+            GameState::Paused => {
+                if is_key_pressed(KeyCode::Space) {
+                    game_state = GameState::Playing;
+                }
 
-        // 游戏结束重开
-        if gameover && is_key_pressed(KeyCode::Space) {
-            squares.clear();
-            bullets.clear();
-            circle.x = half_window_width;
-            circle.y = hafl_window_height;
-            gameover = false;
-            collides = false;
-            time_scale = 1.0;
-            score = 0;
-        }
-
-        // 渲染子弹
-        for bullet in &bullets {
-            // region: 这会放bullet每帧在圆圈和实心圆之间跳动
-            // if rand::gen_range(0, 99) > 50 {
-            //     draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
-            // } else {
-            //     draw_circle(bullet.x, bullet.y, bullet.size / 2.0, bullet.color);
-            // }
-            // endregion
-            draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
-        }
-
-        // 渲染circle
-        draw_circle(circle.x, circle.y, small_r, DARKBLUE);
-        draw_circle(circle.x, circle.y, big_r, color);
-
-        // 渲染方块
-        for square in &squares {
-            draw_rectangle(
-                square.x - square.size / 2.0,
-                square.y - square.size / 2.0,
-                square.size,
-                square.size,
-                square.color,
-            );
-        }
-
-        // region: 渲染分数和历史最高分数
-        // 渲染分数
-        draw_text_ex(
-            format!("当前分数: {}", score).as_str(),
-            10.0,
-            35.0,
-            TextParams {
-                font: font.as_ref(),
-                font_size: 25,
-                color: WHITE,
-                ..Default::default()
-            },
-        );
-
-        // 渲染历史最高分数
-        let highscore_text = format!("历史最高分: {}", high_score);
-        let highscore_text_dimensions =
-            measure_text(highscore_text.as_str(), font.as_ref(), 25, 1.0);
-        draw_text_ex(
-            highscore_text.as_str(),
-            screen_width() - highscore_text_dimensions.width - 10.0,
-            35.0,
-            TextParams {
-                font: font.as_ref(),
-                font_size: 25,
-                color: YELLOW,
-                ..Default::default()
-            },
-        );
-        // endregion
-
-        if gameover {
-            draw_text_ex(
-                text,
-                half_window_width - text_dimensions.width / 2.0,
-                hafl_window_height,
-                TextParams {
-                    font: font.as_ref(),
-                    font_size: 30,
-                    color: PINK,
-                    ..Default::default()
-                },
-            );
-            if score == high_score {
-                let congratulation_text = "Congratulations!";
+                let text = "PAUSED! PRESS SPACE TO CONTINUE";
+                let text_dimensions = measure_text(text, font.as_ref(), 30, 1.0);
+                // 暂停游戏
                 draw_text_ex(
-                    congratulation_text,
-                    half_window_width - text_dimensions.width / 3.0,
-                    hafl_window_height + text_dimensions.height + 10.0,
+                    text,
+                    half_window_width - text_dimensions.width / 2.0,
+                    hafl_window_height,
                     TextParams {
                         font: font.as_ref(),
                         font_size: 30,
@@ -295,6 +268,89 @@ async fn main() {
                     },
                 );
             }
+            GameState::GameOver => {
+                // 游戏结束重开
+                if is_key_pressed(KeyCode::Space) {
+                    game_state = GameState::MainMenu;
+                }
+
+                let text = "Game Over! Press Space to Restart";
+                // font_scale: 缩放倍数
+                let text_dimensions = measure_text(text, font.as_ref(), 30, 1.0);
+                draw_text_ex(
+                    text,
+                    half_window_width - text_dimensions.width / 2.0,
+                    hafl_window_height,
+                    TextParams {
+                        font: font.as_ref(),
+                        font_size: 30,
+                        color: PINK,
+                        ..Default::default()
+                    },
+                );
+                if score == high_score {
+                    let congratulation_text = "Congratulations!";
+                    draw_text_ex(
+                        congratulation_text,
+                        half_window_width - text_dimensions.width / 3.0,
+                        hafl_window_height + text_dimensions.height + 10.0,
+                        TextParams {
+                            font: font.as_ref(),
+                            font_size: 30,
+                            color: PINK,
+                            ..Default::default()
+                        },
+                    );
+                }
+            }
+        }
+        
+        // 在暂停时也渲染方块和分数
+        match game_state {
+            GameState::Paused | GameState::Playing => {
+                // 渲染方块
+                for square in &squares {
+                    draw_rectangle(
+                        square.x - square.size / 2.0,
+                        square.y - square.size / 2.0,
+                        square.size,
+                        square.size,
+                        square.color,
+                    );
+                }
+
+                // region: 渲染分数和历史最高分数
+                // 渲染分数
+                draw_text_ex(
+                    format!("当前分数: {}", score).as_str(),
+                    10.0,
+                    35.0,
+                    TextParams {
+                        font: font.as_ref(),
+                        font_size: 25,
+                        color: WHITE,
+                        ..Default::default()
+                    },
+                );
+
+                // 渲染历史最高分数
+                let highscore_text = format!("历史最高分: {}", high_score);
+                let highscore_text_dimensions =
+                    measure_text(highscore_text.as_str(), font.as_ref(), 25, 1.0);
+                draw_text_ex(
+                    highscore_text.as_str(),
+                    screen_width() - highscore_text_dimensions.width - 10.0,
+                    35.0,
+                    TextParams {
+                        font: font.as_ref(),
+                        font_size: 25,
+                        color: YELLOW,
+                        ..Default::default()
+                    },
+                );
+                // endregion
+            }
+            _ => {}
         }
 
         next_frame().await;
