@@ -2,8 +2,6 @@ pub mod shape;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
 
 use macroquad::prelude::*;
 
@@ -323,6 +321,7 @@ fn save_high_score(score: u32) {
         // }
 
         // saveHighScore(score);
+        println!("saveHighScore: {}", score);
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
