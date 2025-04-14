@@ -1,7 +1,5 @@
 pub mod shape;
 
-#[cfg(target_arch = "wasm32")]
-use gloo_storage::{LocalStorage, Storage};
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
 
@@ -295,7 +293,7 @@ async fn main() {
 fn load_high_score() -> u32 {
     #[cfg(target_arch = "wasm32")]
     {
-        LocalStorage::get("highscore").unwrap_or(0)
+        0
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -309,7 +307,6 @@ fn load_high_score() -> u32 {
 fn save_high_score(score: u32) {
     #[cfg(target_arch = "wasm32")]
     {
-        LocalStorage::set("highscore", score).ok();
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
