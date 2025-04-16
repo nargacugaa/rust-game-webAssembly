@@ -1,3 +1,4 @@
+mod shader;
 pub mod shape;
 mod state;
 
@@ -6,6 +7,7 @@ use std::fs;
 
 use macroquad::prelude::*;
 
+use shader::{FRAGMENT_SHADER, VERTEX_SHADER};
 use shape::Shape;
 use state::GameState;
 
@@ -57,8 +59,40 @@ async fn main() {
     // 添加时间缩放变量
     let mut time_scale = 1.0;
 
+    let mut direction_modifier: f32 = 0.0;
+    let render_target = render_target(320, 150);
+    render_target.texture.set_filter(FilterMode::Nearest);
+    let material = load_material(
+        ShaderSource::Glsl {
+            vertex: VERTEX_SHADER,
+            fragment: FRAGMENT_SHADER,
+        },
+        MaterialParams {
+            uniforms: vec![
+                UniformDesc::new("iResolution", UniformType::Float2),
+                UniformDesc::new("direction_modifier", UniformType::Float1),
+            ],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
     loop {
         clear_background(BLANK);
+        material.set_uniform("iResolution", (screen_width(), screen_height()));
+        material.set_uniform("direction_modifier", direction_modifier);
+        gl_use_material(&material);
+        draw_texture_ex(
+            &render_target.texture,
+            0.,
+            0.,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(screen_width(), screen_height())),
+                ..Default::default()
+            },
+        );
+        gl_use_default_material();
 
         let window_screen_width = screen_width();
         let window_screen_height = screen_height();
@@ -151,9 +185,11 @@ async fn main() {
                 if !collides {
                     if is_key_down(KeyCode::Right) {
                         circle.x += move_frame_speed;
+                        direction_modifier += 0.05 * delta_time;
                     }
                     if is_key_down(KeyCode::Left) {
                         circle.x -= move_frame_speed;
+                        direction_modifier += 0.05 * delta_time;
                     }
                     if is_key_down(KeyCode::Up) {
                         circle.y -= move_frame_speed;
@@ -304,7 +340,7 @@ async fn main() {
                 }
             }
         }
-        
+
         // 在暂停时也渲染方块和分数
         match game_state {
             GameState::Paused | GameState::Playing => {
