@@ -59,9 +59,13 @@ async fn main() {
     // 添加时间缩放变量
     let mut time_scale = 1.0;
 
+    #[cfg(not(target_arch = "wasm32"))]
     let mut direction_modifier: f32 = 0.0;
+    #[cfg(not(target_arch = "wasm32"))]
     let render_target = render_target(320, 150);
+    #[cfg(not(target_arch = "wasm32"))]
     render_target.texture.set_filter(FilterMode::Nearest);
+    #[cfg(not(target_arch = "wasm32"))]
     let material = load_material(
         ShaderSource::Glsl {
             vertex: VERTEX_SHADER,
@@ -79,20 +83,23 @@ async fn main() {
 
     loop {
         clear_background(BLANK);
-        material.set_uniform("iResolution", (screen_width(), screen_height()));
-        material.set_uniform("direction_modifier", direction_modifier);
-        gl_use_material(&material);
-        draw_texture_ex(
-            &render_target.texture,
-            0.,
-            0.,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(screen_width(), screen_height())),
-                ..Default::default()
-            },
-        );
-        gl_use_default_material();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            material.set_uniform("iResolution", (screen_width(), screen_height()));
+            material.set_uniform("direction_modifier", direction_modifier);
+            gl_use_material(&material);
+            draw_texture_ex(
+                &render_target.texture,
+                0.,
+                0.,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(screen_width(), screen_height())),
+                    ..Default::default()
+                },
+            );
+            gl_use_default_material();
+        }
 
         let window_screen_width = screen_width();
         let window_screen_height = screen_height();
@@ -185,11 +192,17 @@ async fn main() {
                 if !collides {
                     if is_key_down(KeyCode::Right) {
                         circle.x += move_frame_speed;
-                        direction_modifier += 0.05 * delta_time;
+                        #[cfg(not(target_arch = "wasm32"))]
+                        {
+                            direction_modifier += 0.05 * delta_time;
+                        }
                     }
                     if is_key_down(KeyCode::Left) {
                         circle.x -= move_frame_speed;
-                        direction_modifier += 0.05 * delta_time;
+                        #[cfg(not(target_arch = "wasm32"))]
+                        {
+                            direction_modifier += 0.05 * delta_time;
+                        }
                     }
                     if is_key_down(KeyCode::Up) {
                         circle.y -= move_frame_speed;

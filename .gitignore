@@ -1,3 +1,4 @@
 reference_books/*.pdf
 **/target/*
 my-first-game/assets/data/highscore.dat
+deploy/*
