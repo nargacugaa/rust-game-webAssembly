@@ -4,6 +4,7 @@ mod state;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
+use std::vec;
 
 use macroquad::prelude::*;
 use macroquad_particles::{self as particles, ColorCurve, Emitter, EmitterConfig};
@@ -60,6 +61,7 @@ async fn main() {
     // 添加时间缩放变量
     let mut time_scale = 1.0;
 
+    // region: shader 背景
     #[cfg(not(target_arch = "wasm32"))]
     let mut direction_modifier: f32 = 0.0;
     #[cfg(not(target_arch = "wasm32"))]
@@ -81,6 +83,18 @@ async fn main() {
         },
     )
     .unwrap();
+    // endregion
+
+    // 爆炸粒子容器
+    let mut explosions: Vec<(Emitter, Vec2)> = vec![];
+
+    // 火箭粒子容器
+    let mut rocket_explosions: Vec<(Emitter, Vec2)> = vec![];
+    let mut rocket_emitter = Emitter::new(particles::EmitterConfig {
+        amount: 1000,
+        emitting: true,
+        ..rocket_exhaust_particles_explosion()
+    });
 
     loop {
         clear_background(BLANK);
@@ -141,7 +155,7 @@ async fn main() {
                     hafl_window_height,
                     TextParams {
                         font: font.as_ref(),
-                        font_size: 30,
+                        font_size: 50,
                         color: RED,
                         ..Default::default()
                     },
@@ -186,9 +200,11 @@ async fn main() {
                 squares.retain(|square| square.y < window_screen_height + square.size);
                 // 移除超出屏幕的子弹
                 bullets.retain(|bullet| bullet.y > 0.0 - bullet.size / 2.0);
-
                 // 移除击中方块的子弹
                 bullets.retain(|bullet| !bullet.collided);
+                // 移除发射出去的粒子
+                explosions.retain(|(explosion, _)| explosion.config.emitting);
+                rocket_explosions.retain(|(explosion, _)| explosion.config.emitting);
 
                 if !collides {
                     if is_key_down(KeyCode::Right) {
@@ -269,6 +285,7 @@ async fn main() {
                         }
                     }
                 }
+
                 // 判断子弹与方块的碰撞
                 for square in squares.iter_mut() {
                     for bullet in bullets.iter_mut() {
@@ -278,25 +295,85 @@ async fn main() {
 
                             score += square.size.round() as u32;
                             high_score = high_score.max(score);
+
+                            // 在碰撞的位置添加碰撞粒子效果
+                            explosions.push((
+                                Emitter::new(EmitterConfig {
+                                    amount: square.size.round() as u32 * 2,
+                                    ..particle_explosion()
+                                }),
+                                vec2(square.x, square.y),
+                            ));
                         }
                     }
                 }
 
-                // 渲染子弹
-                for bullet in &bullets {
-                    // region: 这会放bullet每帧在圆圈和实心圆之间跳动
-                    // if rand::gen_range(0, 99) > 50 {
-                    //     draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
-                    // } else {
-                    //     draw_circle(bullet.x, bullet.y, bullet.size / 2.0, bullet.color);
-                    // }
-                    // endregion
-                    draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
+                let velocity = vec2(
+                    if is_key_down(KeyCode::Right) {
+                        1.0
+                    } else if is_key_down(KeyCode::Left) {
+                        -1.0
+                    } else {
+                        0.0
+                    },
+                    if is_key_down(KeyCode::Down) {
+                        1.0
+                    } else if is_key_down(KeyCode::Up) {
+                        -1.0
+                    } else {
+                        0.0
+                    },
+                );
+                let speed = velocity.length() * MOVEMENT_SPEED;
+
+                // 设置喷射方向和强度
+                if velocity.x < 0.0 {
+                    // 向左移动，粒子向右喷
+                    rocket_emitter.config.initial_direction = vec2(0.5, 3.0_f32.sqrt() / 2.0);
+                    rocket_emitter.config.initial_velocity = 200.0 + speed * 1.0;
+                } else if velocity.x > 0.0 {
+                    // 向右移动，粒子向左喷
+                    rocket_emitter.config.initial_direction = vec2(-0.5, 3.0_f32.sqrt() / 2.0);
+                    rocket_emitter.config.initial_velocity = 200.0 + speed * 1.0;
+                } else {
+                    // 垂直移动或静止，粒子向下喷
+                    rocket_emitter.config.initial_direction = vec2(0.0, 1.0);
+                    rocket_emitter.config.initial_velocity = if velocity.y > 0.0 {
+                        // 向下移动时减弱
+                        100.0
+                    } else {
+                        150.0 + speed * 0.5
+                    };
                 }
 
-                // 渲染circle
-                draw_circle(circle.x, circle.y, small_r, DARKBLUE);
-                draw_circle(circle.x, circle.y, big_r, color);
+                // 其余参数可继续动态调整
+                rocket_emitter.config.size = 1.0 + speed / 400.0;
+                rocket_emitter.config.size_randomness = 0.5 - (speed / 1000.0).min(0.4);
+                rocket_emitter.config.initial_direction_spread = if speed > 0.0 {
+                    std::f32::consts::PI / 16.0
+                } else {
+                    std::f32::consts::PI / 6.0
+                };
+                rocket_emitter.config.colors_curve = if speed > 200.0 {
+                    ColorCurve {
+                        start: YELLOW,
+                        mid: ORANGE,
+                        end: RED,
+                    }
+                } else {
+                    ColorCurve {
+                        start: RED,
+                        mid: WHITE,
+                        end: WHITE,
+                    }
+                };
+
+                // 渲染爆炸粒子效果
+                for (explosion, coords) in explosions.iter_mut() {
+                    explosion.draw(*coords);
+                }
+                let exhaust_pos = vec2(circle.x, circle.y);
+                rocket_emitter.draw(exhaust_pos);
             }
             GameState::Paused => {
                 if is_key_pressed(KeyCode::Space) {
@@ -358,6 +435,20 @@ async fn main() {
         // 在暂停时也渲染方块和分数
         match game_state {
             GameState::Paused | GameState::Playing => {
+                // 渲染circle
+                draw_circle(circle.x, circle.y, small_r, DARKBLUE);
+                draw_circle(circle.x, circle.y, big_r, color);
+                // 渲染子弹
+                for bullet in &bullets {
+                    // region: 这会放bullet每帧在圆圈和实心圆之间跳动
+                    // if rand::gen_range(0, 99) > 50 {
+                    //     draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
+                    // } else {
+                    //     draw_circle(bullet.x, bullet.y, bullet.size / 2.0, bullet.color);
+                    // }
+                    // endregion
+                    draw_circle_lines(bullet.x, bullet.y, bullet.size / 2.0, 5.0, bullet.color);
+                }
                 // 渲染方块
                 for square in &squares {
                     draw_rectangle(
@@ -467,6 +558,30 @@ fn particle_explosion() -> particles::EmitterConfig {
             start: RED,
             mid: ORANGE,
             end: RED,
+        },
+        ..Default::default()
+    }
+}
+
+/// 火箭喷射粒子效果配置项
+fn rocket_exhaust_particles_explosion() -> particles::EmitterConfig {
+    particles::EmitterConfig {
+        local_coords: true,
+        one_shot: false,
+        emitting: true,
+        lifetime: 0.2,
+        lifetime_randomness: 1.0,
+        explosiveness: 0.0,
+        initial_direction: vec2(0.0, 1.0),
+        initial_direction_spread: std::f32::consts::PI / 9.0,
+        initial_velocity: 300.0,
+        initial_velocity_randomness: 1.0,
+        size: 1.0,
+        size_randomness: 1.0,
+        colors_curve: ColorCurve {
+            start: RED,
+            mid: WHITE,
+            end: WHITE,
         },
         ..Default::default()
     }
