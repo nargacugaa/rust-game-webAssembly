@@ -133,7 +133,7 @@ async fn main() {
                 }
 
                 let text = "PRESS SPACE TO START!";
-                let text_dimensions = measure_text(text, font.as_ref(), 30, 1.0);
+                let text_dimensions = measure_text(text, font.as_ref(), 50, 1.0);
                 draw_text_ex(
                     text,
                     half_window_width - text_dimensions.width / 2.0,
