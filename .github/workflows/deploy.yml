@@ -21,7 +21,7 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: Build
-        run: cargo build -p my-first-game --release --target wasm32-unknown-unknown
+        run: RUSTFLAGS="-C debuginfo=2" cargo build -p my-first-game --release --target wasm32-unknown-unknown
 
       - name: Prepare Deployment Directory
         run: |
